@@ -3,11 +3,17 @@ import express, {
   type Request,
   type Response,
 } from "express";
+import cors from "cors"
+import { authRoute } from "./modules/auth/auth.route";
 
 const app: Application = express();
-const port = 5000;
 
 app.use(express.json());
+app.use(
+  cors({
+    origin: "http://localhost:5000/"
+  })
+)
 
 app.get("/", (req: Request, res: Response) => {
   res.status(200).json({
@@ -15,5 +21,7 @@ app.get("/", (req: Request, res: Response) => {
     author: "Next Level",
   });
 });
+
+app.use("/api/auth", authRoute);
 
 export default app;
