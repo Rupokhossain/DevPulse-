@@ -64,8 +64,36 @@ const getSingleIssue = async (req: Request, res: Response) => {
   }
 };
 
+const updateIssue = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const user = req.user as { id: number; role: string };
+
+    const result = await issueService.updateIssueInDB(
+      id as string,
+      req.body,
+      user,
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Issue updated successfully",
+      data: result,
+    });
+  } catch (error: unknown) {
+    let message = "Could not update issue";
+    if (error instanceof Error) message = error.message;
+
+    res.status(403).json({
+      success: false,
+      message: message,
+    });
+  }
+};
+
 export const issueController = {
   createIssue,
   getAllIssues,
-  getSingleIssue
+  getSingleIssue,
+  updateIssue,
 };

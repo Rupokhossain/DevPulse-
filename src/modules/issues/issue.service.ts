@@ -1,5 +1,10 @@
 import { pool } from "../../db";
-import type { TIssue, TIssueFilters, TIssueResponse, TReporter } from "./issue.interface";
+import type {
+  TIssue,
+  TIssueFilters,
+  TIssueResponse,
+  TReporter,
+} from "./issue.interface";
 
 const createIssueIntoDB = async (payload: TIssue, reporterId: number) => {
   const { title, description, type } = payload;
@@ -14,64 +19,63 @@ const createIssueIntoDB = async (payload: TIssue, reporterId: number) => {
   );
 
   return result.rows[0];
-
 };
 
+const getAllIssuesFromDB = async (
+  filters: TIssueFilters,
+): Promise<TIssueResponse[]> => {
+  const { type, status, sort } = filters;
 
-const getAllIssuesFromDB = async(filters: TIssueFilters): Promise<TIssueResponse[]> => {
-    
-    const {type, status, sort} = filters;
+  let query = `SELECT * FROM issues WHERE 1=1`;
+  const queryParams: (string | number)[] = [];
 
-    let query = `SELECT * FROM issues WHERE 1=1`;
-    const queryParams: (string | number)[] = [];
+  if (type) {
+    queryParams.push(type);
+    query += ` AND type = $${queryParams.length}`;
+  }
 
-    if(type) {
-        queryParams.push(type);
-        query += ` AND type = $${queryParams.length}`;
-    }
+  if (status) {
+    queryParams.push(status);
+    query += ` AND status = $${queryParams.length}`;
+  }
 
-    if(status) {
-        queryParams.push(status);
-        query += ` AND status = $${queryParams.length}`;
-    }
+  const orderBy = sort === "oldest" ? "ASC" : "DESC";
 
-    const orderBy = sort === "oldest" ? "ASC" : "DESC";
+  query += ` ORDER BY created_at ${orderBy}`;
 
-    query += ` ORDER BY created_at ${orderBy}`;
+  const issueResult = await pool.query(query, queryParams);
+  const issues = issueResult.rows;
 
-    const issueResult = await pool.query(query, queryParams);
-    const issues = issueResult.rows;
+  const result: TIssueResponse[] = await Promise.all(
+    issues.map(async (issue) => {
+      const userResult = await pool.query(
+        "SELECT id, name, role FROM users WHERE id=$1",
+        [issue.reporter_id],
+      );
 
-    const result: TIssueResponse[] = await Promise.all(
-      issues.map(async (issue) => {
-        const userResult = await pool.query (
-          "SELECT id, name, role FROM users WHERE id=$1",
-          [issue.reporter_id]
-        ); 
+      const reporter: TReporter = userResult.rows[0];
 
-        const reporter: TReporter = userResult.rows[0];
+      const { reporter_id, ...issueData } = issue;
 
-        const {reporter_id, ...issueData} = issue;
+      return {
+        ...issueData,
+        reporter: reporter,
+      } as TIssueResponse;
+    }),
+  );
 
-        return {
-          ...issueData,
-          reporter: reporter,
-        } as TIssueResponse;
+  return result;
+};
 
-      })
-    )
-
-    return result;
-
-}
-
-
-const getSingleIssueFromDB = async (id: string): Promise<TIssueResponse | null> => {
+const getSingleIssueFromDB = async (
+  id: string,
+): Promise<TIssueResponse | null> => {
   const issueResult = await pool.query(
     `
       SELECT * FROM issues WHERE id=$1
 
-    `,[id]
+    `,
+    [id],
   );
 
   const issue = issueResult.rows[0];
@@ -79,23 +83,72 @@ const getSingleIssueFromDB = async (id: string): Promise<TIssueResponse | null> 
   const userResult = await pool.query(
     `
     SELECT id, name, role FROM users WHERE id=$1
-    `,[issue.reporter_id]
+    `,
+    [issue.reporter_id],
   );
 
   const reporter: TReporter = userResult.rows[0];
 
-  const {reporter_id, ...issueData} = issue;
-
+  const { reporter_id, ...issueData } = issue;
 
   return {
     ...issueData,
     reporter: reporter,
-  } as TIssueResponse
+  } as TIssueResponse;
+};
 
-}
+const updateIssueInDB = async (
+  issueId: string,
+  payload: Partial<TIssue>,
+  user: { id: number; role: string },
+) => {
+  const issueResult = await pool.query(
+    `
+        SELECT * FROM issues WHERE id=$1
+    
+    `,
+    [issueId],
+  );
+
+  const issue = issueResult.rows[0];
+
+  if (!issue) {
+    throw new Error("Issue not found");
+  }
+
+  if (user.role === "contributor") {
+    if (issue.reporter_id !== user.id) {
+      throw new Error("You can only update your own issues");
+    }
+
+    if (issue.status !== "open") {
+      throw new Error("You cannot update an issue that is no longer 'open'");
+    }
+  }
+
+  const { title, description, type } = payload;
+
+  const result = await pool.query(
+    `
+    UPDATE issues
+    SET 
+    title = COALESCE($1, title),
+    description = COALESCE($2, description),
+    type = COALESCE($3, type),
+    updated_at = NOW()
+
+    WHERE id=$4
+    RETURNING *
+
+  `,
+    [title, description, type, issueId]
+  );
+  return result.rows[0];
+};
 
 export const issueService = {
   createIssueIntoDB,
   getAllIssuesFromDB,
-  getSingleIssueFromDB
+  getSingleIssueFromDB,
+  updateIssueInDB,
 };
