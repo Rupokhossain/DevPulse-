@@ -80,6 +80,10 @@ const getSingleIssueFromDB = async (
 
   const issue = issueResult.rows[0];
 
+  if (!issue) {
+    return null;
+  }
+
   const userResult = await pool.query(
     `
     SELECT id, name, role FROM users WHERE id=$1
@@ -141,32 +145,32 @@ const updateIssueInDB = async (
     RETURNING *
 
   `,
-    [title, description, type, issueId]
+    [title, description, type, issueId],
   );
   return result.rows[0];
 };
 
-
-const deleteIssueFromDB = async(id: string) => {
-    const result = await pool.query(
-      `
+const deleteIssueFromDB = async (id: string) => {
+  const result = await pool.query(
+    `
         DELETE FROM issues WHERE id=$1
         RETURNING *
 
-      `, [id]
-    );
+      `,
+    [id],
+  );
 
-    if(result.rowCount === 0) {
-      throw new Error("Issue not found");
-    }
+  if (result.rowCount === 0) {
+    throw new Error("Issue not found");
+  }
 
-    return result.rows[0];
-}
+  return result.rows[0];
+};
 
 export const issueService = {
   createIssueIntoDB,
   getAllIssuesFromDB,
   getSingleIssueFromDB,
   updateIssueInDB,
-  deleteIssueFromDB
+  deleteIssueFromDB,
 };
