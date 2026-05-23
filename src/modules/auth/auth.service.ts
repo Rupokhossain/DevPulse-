@@ -3,6 +3,7 @@ import type { userData } from "./auth.interface";
 import { pool } from "../../db";
 import jwt from "jsonwebtoken"
 import config from "../../config";
+import AppError from "../../utils/appError";
 
 const createUserIntoDB = async (payload: userData) => {
   const { name, email, password, role } = payload;
@@ -33,7 +34,7 @@ const loginUser = async (payload: { email: string; password: string }) => {
   );
 
   if (userData.rows.length === 0) {
-    throw new Error("Invalid Credentials!");
+    throw new AppError("Invalid Credentials!", 401);
   }
 
   const user = userData.rows[0];
@@ -41,7 +42,7 @@ const loginUser = async (payload: { email: string; password: string }) => {
   const matchPassword = await bcrypt.compare(password, user.password);
 
   if(!matchPassword) {
-    throw new Error("Invalid Credentials!");
+    throw new AppError("Invalid Credentials!", 401);
   }
 
 

@@ -71,6 +71,10 @@ const getAllIssuesFromDB = async (
 const getSingleIssueFromDB = async (
   id: string,
 ): Promise<TIssueResponse | null> => {
+  if (isNaN(Number(id))) {
+    throw new AppError("Invalid ID format. Please provide a numeric ID.", 400);
+  }
+
   const issueResult = await pool.query(
     `
       SELECT * FROM issues WHERE id=$1
@@ -118,16 +122,16 @@ const updateIssueInDB = async (
   const issue = issueResult.rows[0];
 
   if (!issue) {
-    throw new Error("Issue not found");
+     throw new AppError("Issue not found", 404);
   }
 
   if (user.role === "contributor") {
     if (issue.reporter_id !== user.id) {
-      throw new Error("You can only update your own issues");
+      throw new AppError("You can only update your own issues", 403);
     }
 
     if (issue.status !== "open") {
-      throw new Error("You cannot update an issue that is no longer 'open'");
+      throw new AppError("You cannot update an issue that is no longer 'open'", 403);
     }
   }
 
@@ -162,7 +166,7 @@ const deleteIssueFromDB = async (id: string) => {
   );
 
   if (result.rowCount === 0) {
-    throw new Error("Issue not found");
+    throw new AppError("Issue not found", 404);
   }
 
   return result.rows[0];
