@@ -35,6 +35,12 @@ const getSingleIssue = catchAsync(async (req: Request, res: Response) => {
 
   const result = await issueService.getSingleIssueFromDB(id as string);
 
+  if (!result) {
+    const error = new Error("Issue not found") as Error & { statusCode: number };
+    error.statusCode = 404; 
+    throw error;
+  }
+
   sendResponse(res, {
     statusCode: 200,
     success: true,
