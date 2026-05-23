@@ -1,4 +1,5 @@
 import { pool } from "../../db";
+import AppError from "../../utils/appError";
 import type {
   TIssue,
   TIssueFilters,
@@ -81,7 +82,7 @@ const getSingleIssueFromDB = async (
   const issue = issueResult.rows[0];
 
   if (!issue) {
-    return null;
+    throw new AppError("Issue not found!", 404);
   }
 
   const userResult = await pool.query(
