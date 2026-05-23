@@ -16,6 +16,7 @@ const globalErrorHandler: ErrorRequestHandler = (
   res: Response,
   next: NextFunction,
 ) => {
+  console.log("Error Detected:", err.code);
   let statusCode = err.statusCode || 500;
   let message = err.message || "Something went wrong!";
 
