@@ -1,129 +1,84 @@
 import type { Request, Response } from "express";
 import { issueService } from "./issue.service";
 import type { TIssueFilters } from "./issue.interface";
+import catchAsync from "../../utils/catchAsync";
+import sendResponse from "../../utils/sendResponse";
 
-const createIssue = async (req: Request, res: Response) => {
-  try {
-    const reporterId = req.user.id;
+const createIssue = catchAsync(async (req: Request, res: Response) => {
+  const reporterId = req.user.id;
 
-    const result = await issueService.createIssueIntoDB(req.body, reporterId);
+  const result = await issueService.createIssueIntoDB(req.body, reporterId);
 
-    res.status(201).json({
-      success: true,
-      message: "Issue created successfully",
-      data: result,
-    });
-  } catch (error: unknown) {
-    res.status(500).json({
-      success: false,
-      message: "Could not create issue",
-    });
-  }
-};
+  sendResponse(res, {
+    statusCode: 201,
+    success: true,
+    message: "Issue created successfully",
+    data: result,
+  });
+});
 
-const getAllIssues = async (req: Request, res: Response) => {
-  try {
-    const filters = req.query as unknown as TIssueFilters;
+const getAllIssues = catchAsync(async (req: Request, res: Response) => {
+  const filters = req.query as unknown as TIssueFilters;
 
-    const result = await issueService.getAllIssuesFromDB(filters);
+  const result = await issueService.getAllIssuesFromDB(filters);
 
-    res.status(200).json({
-      success: true,
-      data: result,
-    });
-  } catch (error: unknown) {
-    res.status(500).json({
-      success: false,
-      message: "Something went wrong while fetching issues",
-    });
-  }
-};
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Issues retrieved successfully",
+    data: result,
+  });
+});
 
-const getSingleIssue = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
+const getSingleIssue = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
 
-    const result = await issueService.getSingleIssueFromDB(id as string);
+  const result = await issueService.getSingleIssueFromDB(id as string);
 
-    if (!result) {
-      return res.status(404).json({
-        success: false,
-        message: "Issue not found",
-      });
-    }
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Issue retrieved successfully",
+    data: result,
+  });
+});
 
-    res.status(200).json({
-      success: true,
-      data: result,
-    });
-  } catch (error: unknown) {
-    res.status(500).json({
-      success: false,
-      message: "Something went wrong while fetching the issue",
-    });
-  }
-};
+const updateIssue = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const user = req.user as { id: number; role: string };
 
-const updateIssue = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const user = req.user as { id: number; role: string };
+  const result = await issueService.updateIssueInDB(
+    id as string,
+    req.body,
+    user,
+  );
 
-    const result = await issueService.updateIssueInDB(
-      id as string,
-      req.body,
-      user,
-    );
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Issue updated successfully",
+    data: result,
+  });
+});
 
-    res.status(200).json({
-      success: true,
-      message: "Issue updated successfully",
-      data: result,
-    });
-  } catch (error: unknown) {
-    let message = "Could not update issue";
-    if (error instanceof Error) message = error.message;
+const deleteIssue = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
 
-    res.status(403).json({
-      success: false,
-      message: message,
-    });
-  }
-};
+  const result = await issueService.deleteIssueFromDB(id as string);
 
-const deleteIssue = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
 
-    const result = await issueService.deleteIssueFromDB(id as string);
-
-    if (result.rowCount === 0) {
-      res.status(404).json({
-        success: false,
-        message: "Issue Not Found!",
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: "Issue deleted successfully",
-      data: {},
-    });
-  } catch (error: unknown) {
-    let message = "Could not delete issue";
-    if (error instanceof Error) message = error.message;
-
-    res.status(404).json({
-      success: false,
-      message: message,
-    });
-  }
-};
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Issue deleted successfully",
+    data: null,
+  });
+});
 
 export const issueController = {
   createIssue,
   getAllIssues,
   getSingleIssue,
   updateIssue,
-  deleteIssue
+  deleteIssue,
 };
